@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-to-loki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-to-loki ##
+  template:
+    metadata:
+      labels:
+        app: k8s-to-loki
+    spec:
+      containers:
+        - name: k8s-to-loki
+          image: harbor.getapp.sh/getapp-dev/log-collecter:0.0.2
+          imagePullPolicy: Always
+          serviceaccount: promtail-sa
+          env:
+            - name: LOKI_URL
+              value: "http://loki.chart-test.svc.cluster.local:3100/loki/api/v1/push"
+            - name: INTERVAL
+              value: "60"
+            - name: CONTAINER_NAMES
+              value: "api,delivery,discovery,offering,getmap-node"
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources: {}
+      serviceAccountName: promtail-sa
+      serviceAccount: promtail-sa

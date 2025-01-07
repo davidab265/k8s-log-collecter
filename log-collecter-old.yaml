@@ -1,0 +1,98 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: promtail-log-collector1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: promtail-log-collector
+  template:
+    metadata:
+      labels:
+        app: promtail-log-collector
+    spec:
+      containers:
+        - name: log-collector
+          image: 'quay.io/appuio/oc:v4.14'
+          command:
+            - /bin/sh
+            - '-c'
+            - |
+              while true; do
+                  echo "Starting new iteration..."
+                  
+                  # Debug Information
+                  echo "=== Debug Information ==="
+                  echo "Total pods:"
+                  kubectl get pods -n chart-test --no-headers | wc -l
+                  echo "\nListing all pods:"
+                  kubectl get pods -n chart-test
+                  echo "=== End Debug ==="
+                  
+                  # Get all running pods
+                  kubectl get pods -n chart-test -o=custom-columns=NAME:.metadata.name,STATUS:.status.phase --no-headers | \
+                  while read -r pod status; do
+                      if [ "$status" = "Running" ]; then
+                          echo "Processing pod: $pod"
+                          
+                          # Get all containers for this pod
+                          containers=$(kubectl get pod "$pod" -n chart-test -o=jsonpath='{.spec.containers[*].name}')
+                          
+                          for container in $containers; do
+                              echo "Getting logs for container: $container in pod: $pod"
+                              
+                              logs=$(kubectl logs "$pod" -c "$container" -n chart-test --since=1m 2>/dev/null)
+                              
+                              if [ ! -z "$logs" ]; then
+                                  echo "Found logs for $pod/$container, sending to Loki..."
+                                  
+                                  # Process logs line by line
+                                  echo "$logs" | while IFS= read -r line; do
+                                      # Clean and escape the log line
+                                      clean_line=$(echo "$line" | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | \
+                                          sed 's/[[:cntrl:]]//g' | \
+                                          sed 's/"/\\"/g' | \
+                                          sed "s/'/\\'/g")
+                                      
+                                      # Ensure JSON structure is valid
+                                      payload=$(cat <<EOF
+              {
+                  "streams": [
+                      {
+                          "stream": {
+                              "namespace": "chart-test",
+                              "pod": "$pod",
+                              "container": "$container"
+                          },
+                          "values": [
+                              ["$(date +%s%N)", "$clean_line"]
+                          ]
+                      }
+                  ]
+              }
+              EOF
+                                      )
+                                      
+                                      # Send the log line to Loki
+                                      response=$(curl -s -X POST -H "Content-Type: application/json" \
+                                          -d "$payload" \
+                                          http://loki.chart-test.svc.cluster.local:3100/loki/api/v1/push)
+                                      
+                                      echo "Loki response for line: $response"
+                                  done
+                              else
+                                  echo "No logs found for $pod/$container in the last 1 minute."
+                              fi
+                          done
+                      else
+                          echo "Skipping pod: $pod with status: $status"
+                      fi
+                  done
+                  
+                  echo "Iteration complete. Sleeping for 5 seconds..."
+                  sleep 5
+              done
+          resources: {}
+      serviceAccountName: promtail-sa
+      serviceAccount: promtail-sa
