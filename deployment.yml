@@ -1,33 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: k8s-to-loki
+  name: k8s-log-collector
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: k8s-to-loki ##
+      app: k8s-log-collector
   template:
     metadata:
       labels:
-        app: k8s-to-loki
+        app: k8s-log-collector
     spec:
+      serviceAccountName: k8s-log-collector
       containers:
-        - name: k8s-to-loki
-          image: harbor.getapp.sh/getapp-dev/log-collecter:0.0.2
+        - name: k8s-log-collector
+          # Build locally or point to your own registry:
+          #   docker build -t <your-registry>/k8s-log-collector:latest .
+          image: <your-registry>/k8s-log-collector:latest
           imagePullPolicy: Always
-          serviceaccount: promtail-sa
           env:
             - name: LOKI_URL
-              value: "http://loki.chart-test.svc.cluster.local:3100/loki/api/v1/push"
+              value: "http://loki.loki.svc.cluster.local:3100/loki/api/v1/push"
             - name: INTERVAL
               value: "60"
             - name: CONTAINER_NAMES
-              value: "api,delivery,discovery,offering,getmap-node"
+              value: "app,sidecar"
             - name: NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
           resources: {}
-      serviceAccountName: promtail-sa
-      serviceAccount: promtail-sa

@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Compile check
+        run: python -m py_compile k8s_to_loki.py
+
+      - name: Validate Kubernetes manifests
+        run: |
+          pip install pyyaml
+          python -c "
+          import yaml
+          for f in ['deployment.yml', 'rbac.yaml']:
+              docs = [d for d in yaml.safe_load_all(open(f)) if d]
+              assert docs, f + ' is empty'
+              print(f + ':', len(docs), 'document(s) OK')
+          "

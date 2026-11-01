@@ -116,7 +116,7 @@ def send_logs_to_loki(log_lines, pod_name, container_name):
             payload = {
                 "streams": [{
                     "stream": {
-                        "namespace": "chart-test",
+                        "namespace": NAMESPACE,
                         "pod": pod_name,
                         "container": container_name
                     },

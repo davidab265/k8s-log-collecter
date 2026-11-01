@@ -1,0 +1,59 @@
+name: Bug Report
+description: Create a report to help us improve the Kubernetes Log Collector
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue!
+        If this is a security vulnerability, please refer to our [Security Policy](../../SECURITY.md) instead of opening a public issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Tell us what went wrong...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: What steps did you take before encountering the issue?
+      placeholder: |
+        1. Set env '...'
+        2. Run 'python k8s_to_loki.py' or apply deployment.yml
+        3. Observe '...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Details about your environment.
+      placeholder: |
+        - Version / Commit:
+        - Python version:
+        - Kubernetes version / distribution:
+        - Loki version:
+        - Deployment: in-cluster / local kubeconfig
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Please paste any collector output or Kubernetes events here.
+      render: shell
